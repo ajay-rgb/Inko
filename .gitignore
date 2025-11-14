@@ -1,0 +1,39 @@
+# Node dependencies
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage/
+*.lcov
+
+# Build artifacts
+*.tsbuildinfo
+dist/
+build/
+
+# Env files
+.env
+.env.*
+
+# Editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# OS files
+Desktop.ini
+
+# Misc
+*.log
+*.tmp
