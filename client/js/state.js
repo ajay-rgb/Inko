@@ -66,6 +66,31 @@ export const setIsDrawing = (value) => {
 
 const clampPointer = (value) => Math.max(-1, Math.min(value, state.operations.length - 1));
 
+const truncateFutureHistory = () => {
+  const cutoff = state.pointer + 1;
+  if (cutoff <= 0 && state.pointer < 0) {
+    if (!state.operations.length) return;
+    state.operations = [];
+  } else if (cutoff < state.operations.length) {
+    state.operations.splice(cutoff);
+  } else {
+    return;
+  }
+
+  if (state.optimisticOperations.size) {
+    const remaining = new Set(state.operations.map((op) => op?.clientOperationId).filter(Boolean));
+    Array.from(state.optimisticOperations.keys()).forEach((key) => {
+      if (!remaining.has(key)) {
+        state.optimisticOperations.delete(key);
+      }
+    });
+  }
+
+  if (state.checkpoints.length) {
+    state.checkpoints = state.checkpoints.filter((checkpoint) => checkpoint.pointer <= state.pointer);
+  }
+};
+
 export const setPointer = (value, { silent = false } = {}) => {
   const clamped = clampPointer(value);
   if (clamped === state.pointer && !silent) return;
@@ -104,6 +129,10 @@ export const addOperation = (operation, { optimistic = false } = {}) => {
     state.operations[existingIndex] = operation;
     emit('operationUpdated', operation);
     return;
+  }
+
+  if (state.pointer < state.operations.length - 1) {
+    truncateFutureHistory();
   }
 
   state.operations.push(operation);

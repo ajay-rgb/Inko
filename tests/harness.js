@@ -152,6 +152,70 @@ const simulateClear = async (sender, peers = []) => {
   console.log('Clear broadcast acknowledged by all clients');
 };
 
+const drawStrokeForUndoTest = async (sender, receivers = [], offset = 0) => {
+  const baseX = 40 + offset;
+  const baseY = 50 + offset;
+  const path = [
+    { x: baseX, y: baseY },
+    { x: baseX + 12, y: baseY + 8 },
+    { x: baseX + 24, y: baseY + 16 },
+  ];
+  const [startPoint, ...movePoints] = path;
+  const stroke = {
+    clientOperationId: crypto.randomUUID(),
+    color: '#55AAFF',
+    width: 4,
+    tool: 'brush',
+  };
+
+  send(sender, { type: MESSAGE_TYPES.DRAW_START, data: { ...stroke, point: startPoint } });
+  await Promise.all(receivers.map((client) => waitForMessage(client, MESSAGE_TYPES.DRAW_START)));
+
+  send(sender, { type: MESSAGE_TYPES.DRAW_MOVE, data: { ...stroke, points: movePoints } });
+  if (receivers.length) {
+    await Promise.all(receivers.map((client) => waitForMessage(client, MESSAGE_TYPES.DRAW_MOVE)));
+  }
+
+  send(sender, { type: MESSAGE_TYPES.DRAW_END, data: { ...stroke, path } });
+  const endMessages = await Promise.all([
+    waitForMessage(sender, MESSAGE_TYPES.DRAW_END),
+    ...receivers.map((client) => waitForMessage(client, MESSAGE_TYPES.DRAW_END)),
+  ]);
+
+  endMessages.forEach((msg, idx) => {
+    assert(msg.data?.operation, `Stroke commit missing for participant ${idx + 1}`);
+  });
+
+  return endMessages[0].data.operation;
+};
+
+const simulateUndoTruncatesRedoStack = async (clientA, clientB) => {
+  send(clientA, { type: MESSAGE_TYPES.STATE_SYNC });
+  const initialSync = await waitForMessage(clientA, MESSAGE_TYPES.STATE_SYNC);
+  const initialOpCount = (initialSync.data?.operations || []).length;
+  
+  const op1 = await drawStrokeForUndoTest(clientA, [clientB], 0);
+  const op2 = await drawStrokeForUndoTest(clientA, [clientB], 30);
+
+  send(clientA, { type: MESSAGE_TYPES.UNDO });
+  await Promise.all([
+    waitForMessage(clientA, MESSAGE_TYPES.UNDO),
+    waitForMessage(clientB, MESSAGE_TYPES.UNDO),
+  ]);
+
+  const op3 = await drawStrokeForUndoTest(clientA, [clientB], 60);
+
+  send(clientA, { type: MESSAGE_TYPES.STATE_SYNC });
+  const syncMsg = await waitForMessage(clientA, MESSAGE_TYPES.STATE_SYNC);
+  const operationIds = (syncMsg.data?.operations || []).map((operation) => operation.id);
+
+  assert(!operationIds.includes(op2.id), 'Undone stroke should not return after new draw');
+  assert(operationIds.includes(op1.id), 'Original stroke missing after undo/draw sequence');
+  assert(operationIds.includes(op3.id), 'Newest stroke missing after undo/draw sequence');
+  assert(operationIds.length === initialOpCount + 2, `Expected ${initialOpCount + 2} ops but got ${operationIds.length}`);
+  console.log('Undo truncation verified successfully');
+};
+
 const main = async () => {
   const server = await startServer();
   try {
@@ -162,6 +226,7 @@ const main = async () => {
 
   await simulateDrawSequence(clientA, clientB);
   await simulateClear(clientB, [clientA]);
+  await simulateUndoTruncatesRedoStack(clientA, clientB);
 
     clientA.close();
     clientB.close();

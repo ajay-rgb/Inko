@@ -37,7 +37,22 @@ export class Room {
     this.pointer = Math.max(-1, this.pointer - overflow);
   }
 
+  truncateFutureOperations() {
+    const cutoff = this.pointer + 1;
+    if (cutoff <= 0 && this.pointer < 0) {
+      if (this.operations.length) {
+        this.operations = [];
+      }
+      return;
+    }
+    if (cutoff >= this.operations.length) return;
+    this.operations.splice(cutoff);
+  }
+
   appendOperation(operation) {
+    if (this.pointer < this.operations.length - 1) {
+      this.truncateFutureOperations();
+    }
     this.operations.push(operation);
     this.pointer = this.operations.length - 1;
     this.trimHistoryIfNeeded();
@@ -65,7 +80,7 @@ export class Room {
 
   getStateSnapshot() {
     return {
-      operations: this.operations,
+      operations: this.pointer < 0 ? [] : this.operations.slice(0, this.pointer + 1),
       pointer: this.pointer,
       users: this.getUsers(),
     };
