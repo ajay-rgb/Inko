@@ -12,16 +12,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
 
+// Resolve client path - go up from server/ to root, then into client/
+const clientPath = path.resolve(__dirname, '..', 'client');
+console.log('Server directory:', __dirname);
+console.log('Client path:', clientPath);
+
 const app = express();
 app.use(express.json());
 
 // Serve static files with proper MIME types
-app.use(express.static(path.join(__dirname, '../client'), {
+app.use(express.static(clientPath, {
   setHeaders: (res, filePath) => {
+    console.log('Serving file:', filePath);
     if (filePath.endsWith('.js')) {
-      res.setHeader('Content-Type', 'application/javascript');
+      res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
     } else if (filePath.endsWith('.css')) {
-      res.setHeader('Content-Type', 'text/css');
+      res.setHeader('Content-Type', 'text/css; charset=UTF-8');
     }
   }
 }));
