@@ -74,6 +74,18 @@ const clearAllCanvases = () => {
 
 const resizeCanvases = () => {
   if (!container) return;
+  
+  // Cancel active stroke if drawing during resize
+  if (pointerDown) {
+    pointerDown = false;
+    currentPath = [];
+    batchedPoints = [];
+    activeStroke = null;
+    stopBatching(null);
+    setIsDrawing(false);
+    tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+  }
+  
   const { width, height } = container.getBoundingClientRect();
   [mainCanvas, remoteCanvas, tempCanvas].forEach((canvas) => {
     canvas.width = width * devicePixelRatio;
@@ -91,11 +103,28 @@ const resizeCanvases = () => {
   renderRemoteCursors();
 };
 
+/**
+ * Validate that a point has finite coordinates
+ * @param {Object} point - Point to validate
+ * @returns {boolean} True if point is valid
+ */
+const isValidPoint = (point) => {
+  return point && 
+         Number.isFinite(point.x) && 
+         Number.isFinite(point.y) &&
+         point.x >= -100 &&
+         point.x <= 10000 &&
+         point.y >= -100 &&
+         point.y <= 10000;
+};
+
 const getCanvasCoordinates = (event) => {
   const rect = mainCanvas.getBoundingClientRect();
   const x = ((event.clientX - rect.left) * (mainCanvas.width / rect.width)) / devicePixelRatio;
   const y = ((event.clientY - rect.top) * (mainCanvas.height / rect.height)) / devicePixelRatio;
-  return { x, y };
+  const point = { x, y };
+  // Return null if coordinates are invalid
+  return isValidPoint(point) ? point : null;
 };
 
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -164,6 +193,7 @@ const handlePointerDown = (event, deps) => {
   if (event.button !== 0) return;
   pointerDown = true;
   const point = getCanvasCoordinates(event);
+  if (!point) return; // Ignore invalid coordinates
   currentPath = [point];
   batchedPoints = [point];
   const color = deps.getCurrentColor();
@@ -181,6 +211,7 @@ const handlePointerDown = (event, deps) => {
 const handlePointerMove = (event, deps) => {
   if (!mainCanvas) return;
   const point = getCanvasCoordinates(event);
+  if (!point) return; // Ignore invalid coordinates
   const now = performance.now();
   if (now - lastCursorSentAt >= CURSOR_THROTTLE_INTERVAL) {
     deps.sendCursorMove(point);

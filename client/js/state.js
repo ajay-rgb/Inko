@@ -1,5 +1,47 @@
 import { CHECKPOINT_INTERVAL, MAX_OPERATIONS, TOOLS } from './constants.js';
 
+/**
+ * @typedef {Object} Point
+ * @property {number} x - X coordinate in CSS pixels
+ * @property {number} y - Y coordinate in CSS pixels
+ */
+
+/**
+ * @typedef {Object} OperationData
+ * @property {Point[]} [path] - Array of points for draw/erase operations
+ * @property {string} [color] - Hex color code
+ * @property {number} [width] - Stroke width (1-20)
+ * @property {string} [tool] - Tool type ('brush' | 'eraser')
+ */
+
+/**
+ * @typedef {Object} Operation
+ * @property {string} id - Unique operation identifier
+ * @property {string} userId - User who created the operation
+ * @property {number} timestamp - Creation timestamp
+ * @property {number} sequenceNumber - Global sequence order
+ * @property {'draw'|'erase'|'clear'} type - Operation type
+ * @property {OperationData} data - Operation-specific data
+ */
+
+/**
+ * @typedef {Object} User
+ * @property {string} id - Unique user identifier
+ * @property {string} color - User's assigned color
+ * @property {string} name - User's display name
+ * @property {number} connectedAt - Connection timestamp
+ * @property {Point} [cursor] - Current cursor position
+ */
+
+/**
+ * @typedef {Object} Checkpoint
+ * @property {number} pointer - Operation pointer at checkpoint
+ * @property {ImageData} imageData - Canvas snapshot
+ */
+
+/**
+ * Application state container
+ */
 const state = {
   operations: [],
   pointer: -1,
@@ -15,12 +57,24 @@ const state = {
 
 const listeners = new Map();
 
+/**
+ * Emit an event to all registered listeners
+ * @param {string} event - Event name
+ * @param {*} payload - Event payload
+ * @returns {void}
+ */
 const emit = (event, payload) => {
   const handlers = listeners.get(event);
   if (!handlers) return;
   handlers.forEach((handler) => handler(payload));
 };
 
+/**
+ * Register an event listener
+ * @param {string} event - Event name
+ * @param {Function} handler - Callback function
+ * @returns {Function} Unsubscribe function
+ */
 export const onState = (event, handler) => {
   if (!listeners.has(event)) {
     listeners.set(event, new Set());
@@ -29,43 +83,87 @@ export const onState = (event, handler) => {
   return () => offState(event, handler);
 };
 
+/**
+ * Unregister an event listener
+ * @param {string} event - Event name
+ * @param {Function} handler - Callback function
+ * @returns {void}
+ */
 export const offState = (event, handler) => {
   const handlers = listeners.get(event);
   if (!handlers) return;
   handlers.delete(handler);
 };
 
+/**
+ * Get current application state
+ * @returns {Object} Current state
+ */
 export const getState = () => state;
 
+/**
+ * Set the local user
+ * @param {User} user - User object
+ * @returns {void}
+ */
 export const setLocalUser = (user) => {
   state.localUser = user;
   emit('localUser', user);
 };
 
+/**
+ * Set current drawing tool
+ * @param {string} tool - Tool type ('brush' | 'eraser')
+ * @returns {void}
+ */
 export const setTool = (tool) => {
   if (tool === state.currentTool) return;
   state.currentTool = tool;
   emit('toolChanged', tool);
 };
 
+/**
+ * Set current drawing color
+ * @param {string} color - Hex color code
+ * @returns {void}
+ */
 export const setColor = (color) => {
   if (color === state.currentColor) return;
   state.currentColor = color;
   emit('colorChanged', color);
 };
 
+/**
+ * Set current stroke width
+ * @param {number} width - Stroke width (1-20)
+ * @returns {void}
+ */
 export const setWidth = (width) => {
   state.currentWidth = width;
   emit('widthChanged', width);
 };
 
+/**
+ * Set drawing state flag
+ * @param {boolean} value - Whether currently drawing
+ * @returns {void}
+ */
 export const setIsDrawing = (value) => {
   state.isDrawing = value;
   emit('drawingChanged', value);
 };
 
+/**
+ * Clamp pointer value to valid range
+ * @param {number} value - Pointer value
+ * @returns {number} Clamped pointer value
+ */
 const clampPointer = (value) => Math.max(-1, Math.min(value, state.operations.length - 1));
 
+/**
+ * Remove operations beyond current pointer (truncate redo stack)
+ * @returns {void}
+ */
 const truncateFutureHistory = () => {
   const cutoff = state.pointer + 1;
   if (cutoff <= 0 && state.pointer < 0) {
@@ -91,6 +189,13 @@ const truncateFutureHistory = () => {
   }
 };
 
+/**
+ * Set the operation history pointer
+ * @param {number} value - New pointer value
+ * @param {Object} [options] - Options
+ * @param {boolean} [options.silent=false] - Suppress event emission
+ * @returns {void}
+ */
 export const setPointer = (value, { silent = false } = {}) => {
   const clamped = clampPointer(value);
   if (clamped === state.pointer && !silent) return;
@@ -100,6 +205,10 @@ export const setPointer = (value, { silent = false } = {}) => {
   }
 };
 
+/**
+ * Reset entire operation history
+ * @returns {void}
+ */
 export const resetHistory = () => {
   state.operations = [];
   state.pointer = -1;
@@ -108,6 +217,10 @@ export const resetHistory = () => {
   emit('historyReset');
 };
 
+/**
+ * Trim operation history if it exceeds MAX_OPERATIONS
+ * @returns {void}
+ */
 const trimHistoryIfNeeded = () => {
   if (state.operations.length <= MAX_OPERATIONS) return;
   const overflow = state.operations.length - MAX_OPERATIONS;
@@ -122,6 +235,13 @@ const trimHistoryIfNeeded = () => {
   emit('historyTrimmed', { overflow });
 };
 
+/**
+ * Add an operation to history
+ * @param {Operation} operation - Operation to add
+ * @param {Object} [options] - Options
+ * @param {boolean} [options.optimistic=false] - Whether this is an optimistic operation
+ * @returns {void}
+ */
 export const addOperation = (operation, { optimistic = false } = {}) => {
   if (!operation) return;
   const existingIndex = state.operations.findIndex((op) => op.id === operation.id);
@@ -148,6 +268,11 @@ export const addOperation = (operation, { optimistic = false } = {}) => {
   trimHistoryIfNeeded();
 };
 
+/**
+ * Confirm an optimistic operation with server response
+ * @param {Operation} serverOperation - Server-confirmed operation
+ * @returns {void}
+ */
 export const confirmOperation = (serverOperation) => {
   if (!serverOperation) return;
   const { clientOperationId } = serverOperation;
@@ -166,15 +291,29 @@ export const confirmOperation = (serverOperation) => {
   emit('operationConfirmed', serverOperation);
 };
 
+/**
+ * Get all operations up to current pointer
+ * @returns {Operation[]} Array of operations
+ */
 export const getOperationsUpToPointer = () => {
   if (state.pointer < 0) return [];
   return state.operations.slice(0, state.pointer + 1);
 };
 
+/**
+ * Request canvas rebuild
+ * @returns {void}
+ */
 export const requestRebuild = () => {
   emit('rebuildRequested', { pointer: state.pointer });
 };
 
+/**
+ * Save a canvas checkpoint
+ * @param {number} pointer - Operation pointer at checkpoint
+ * @param {ImageData} imageData - Canvas snapshot
+ * @returns {void}
+ */
 export const saveCheckpoint = (pointer, imageData) => {
   if (typeof pointer !== 'number' || !imageData) return;
   state.checkpoints.push({ pointer, imageData });
@@ -183,10 +322,19 @@ export const saveCheckpoint = (pointer, imageData) => {
   }
 };
 
+/**
+ * Clear all checkpoints
+ * @returns {void}
+ */
 export const clearCheckpoints = () => {
   state.checkpoints = [];
 };
 
+/**
+ * Get nearest checkpoint before target pointer
+ * @param {number} targetPointer - Target operation pointer
+ * @returns {Checkpoint|null} Checkpoint or null
+ */
 export const getCheckpoint = (targetPointer) => {
   if (!state.checkpoints.length) return null;
   const clone = [...state.checkpoints];

@@ -80,6 +80,23 @@ const createColorButtons = () => {
 };
 
 const bindEvents = ({ onUndo, onRedo, onClear, onNameChange }) => {
+  let undoDebounce = false;
+  let redoDebounce = false;
+  
+  const debouncedUndo = () => {
+    if (undoDebounce) return;
+    undoDebounce = true;
+    onUndo();
+    setTimeout(() => undoDebounce = false, 100);
+  };
+  
+  const debouncedRedo = () => {
+    if (redoDebounce) return;
+    redoDebounce = true;
+    onRedo();
+    setTimeout(() => redoDebounce = false, 100);
+  };
+  
   elements.brushTool.addEventListener('click', () => setTool(TOOLS.BRUSH));
   elements.eraserTool.addEventListener('click', () => setTool(TOOLS.ERASER));
   elements.strokeWidth.addEventListener('input', (event) => {
@@ -88,8 +105,8 @@ const bindEvents = ({ onUndo, onRedo, onClear, onNameChange }) => {
     setWidth(value);
   });
 
-  elements.undoBtn.addEventListener('click', onUndo);
-  elements.redoBtn.addEventListener('click', onRedo);
+  elements.undoBtn.addEventListener('click', debouncedUndo);
+  elements.redoBtn.addEventListener('click', debouncedRedo);
   elements.clearBtn.addEventListener('click', () => {
     if (window.confirm('Clear canvas for everyone?')) {
       onClear();
@@ -109,11 +126,11 @@ const bindEvents = ({ onUndo, onRedo, onClear, onNameChange }) => {
     if (!modifier) return;
     if (event.key === 'z') {
       event.preventDefault();
-      onUndo();
+      debouncedUndo();
     }
     if (event.key === 'y') {
       event.preventDefault();
-      onRedo();
+      debouncedRedo();
     }
   });
 };
