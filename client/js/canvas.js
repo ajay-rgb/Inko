@@ -15,6 +15,31 @@ import {
   setIsDrawing,
 } from './state.js';
 
+/**
+ * @typedef {Object} Point
+ * @property {number} x - X coordinate
+ * @property {number} y - Y coordinate
+ */
+
+/**
+ * @typedef {Object} StrokeMeta
+ * @property {string} clientOperationId - Unique stroke identifier
+ * @property {string} color - Stroke color
+ * @property {number} width - Stroke width
+ * @property {string} tool - Tool type ('brush' | 'eraser')
+ */
+
+/**
+ * @typedef {Object} CanvasDependencies
+ * @property {Function} getCurrentColor - Get current color
+ * @property {Function} getCurrentTool - Get current tool
+ * @property {Function} getCurrentWidth - Get current width
+ * @property {Function} sendDrawStart - Send draw start message
+ * @property {Function} sendDrawMove - Send draw move message
+ * @property {Function} sendDrawEnd - Send draw end message
+ * @property {Function} sendCursorMove - Send cursor move message
+ */
+
 const devicePixelRatio = window.devicePixelRatio || 1;
 
 let mainCanvas;
@@ -40,6 +65,10 @@ const remoteStrokes = new Map();
 
 const remoteStrokeKey = (userId, clientOperationId) => `${userId}:${clientOperationId}`;
 
+/**
+ * Clear the remote overlay canvas
+ * @returns {void}
+ */
 const clearRemoteOverlay = () => {
   remoteStrokes.clear();
   if (!remoteCtx) return;
@@ -49,6 +78,11 @@ const clearRemoteOverlay = () => {
   remoteCtx.restore();
 };
 
+/**
+ * Get canvas element references from DOM
+ * @returns {void}
+ * @throws {Error} If required elements are missing
+ */
 const getCanvasElements = () => {
   mainCanvas = document.getElementById('mainCanvas');
   tempCanvas = document.getElementById('tempCanvas');
@@ -63,6 +97,10 @@ const getCanvasElements = () => {
   remoteCtx = remoteCanvas.getContext('2d');
 };
 
+/**
+ * Clear all canvas layers
+ * @returns {void}
+ */
 const clearAllCanvases = () => {
   [mainCtx, tempCtx, remoteCtx].forEach((ctx) => {
     ctx.save();
@@ -72,6 +110,10 @@ const clearAllCanvases = () => {
   });
 };
 
+/**
+ * Resize all canvases and cancel active stroke
+ * @returns {void}
+ */
 const resizeCanvases = () => {
   if (!container) return;
   
@@ -118,6 +160,11 @@ const isValidPoint = (point) => {
          point.y <= 10000;
 };
 
+/**
+ * Convert event coordinates to canvas coordinates
+ * @param {PointerEvent} event - Pointer event
+ * @returns {Point|null} Canvas coordinates or null if invalid
+ */
 const getCanvasCoordinates = (event) => {
   const rect = mainCanvas.getBoundingClientRect();
   const x = ((event.clientX - rect.left) * (mainCanvas.width / rect.width)) / devicePixelRatio;
@@ -127,14 +174,35 @@ const getCanvasCoordinates = (event) => {
   return isValidPoint(point) ? point : null;
 };
 
+/**
+ * Calculate Euclidean distance between two points
+ * @param {Point} a - First point
+ * @param {Point} b - Second point
+ * @returns {number} Distance between points
+ */
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
+/**
+ * Check if point should be added to path
+ * @param {Point} point - Candidate point
+ * @returns {boolean} True if point is far enough from last point
+ */
 const shouldAddPoint = (point) => {
   if (!currentPath.length) return true;
   const lastPoint = currentPath[currentPath.length - 1];
   return distance(point, lastPoint) >= 1.5;
 };
 
+/**
+ * Draw a path on a canvas context
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Point[]} path - Array of points
+ * @param {Object} options - Drawing options
+ * @param {string} options.color - Stroke color
+ * @param {number} options.width - Stroke width
+ * @param {string} options.tool - Tool type ('brush' | 'eraser')
+ * @returns {void}
+ */
 const drawPath = (ctx, path, { color, width, tool }) => {
   if (!path?.length) return;
   ctx.save();
@@ -152,6 +220,12 @@ const drawPath = (ctx, path, { color, width, tool }) => {
   ctx.restore();
 };
 
+/**
+ * Simplify path using distance-based tolerance
+ * @param {Point[]} path - Path to simplify
+ * @param {number} [tolerance=1.8] - Minimum distance between points
+ * @returns {Point[]} Simplified path
+ */
 const simplifyPath = (path, tolerance = 1.8) => {
   if (path.length < 3) return path;
   const simplified = [path[0]];
@@ -164,6 +238,11 @@ const simplifyPath = (path, tolerance = 1.8) => {
   return simplified;
 };
 
+/**
+ * Flush batched points to server
+ * @param {Function} sendDrawMove - Function to send draw move message
+ * @returns {void}
+ */
 const flushBatchedPoints = (sendDrawMove) => {
   if (!batchedPoints.length || !activeStroke) return;
   sendDrawMove({
@@ -176,11 +255,21 @@ const flushBatchedPoints = (sendDrawMove) => {
   batchedPoints = [];
 };
 
+/**
+ * Start batching points for server transmission
+ * @param {Function} sendDrawMove - Function to send draw move message
+ * @returns {void}
+ */
 const startBatching = (sendDrawMove) => {
   if (batchIntervalId) return;
   batchIntervalId = window.setInterval(() => flushBatchedPoints(sendDrawMove), DRAW_MOVE_BATCH_INTERVAL);
 };
 
+/**
+ * Stop batching and send remaining points
+ * @param {Function|null} sendDrawMove - Function to send draw move message
+ * @returns {void}
+ */
 const stopBatching = (sendDrawMove) => {
   if (batchIntervalId) {
     window.clearInterval(batchIntervalId);
@@ -189,6 +278,12 @@ const stopBatching = (sendDrawMove) => {
   flushBatchedPoints(sendDrawMove);
 };
 
+/**
+ * Handle pointer down event to start drawing
+ * @param {PointerEvent} event - Pointer down event
+ * @param {CanvasDependencies} deps - Dependencies for drawing
+ * @returns {void}
+ */
 const handlePointerDown = (event, deps) => {
   if (event.button !== 0) return;
   pointerDown = true;
@@ -208,6 +303,12 @@ const handlePointerDown = (event, deps) => {
   startBatching(deps.sendDrawMove);
 };
 
+/**
+ * Handle pointer move event for drawing and cursor updates
+ * @param {PointerEvent} event - Pointer move event
+ * @param {CanvasDependencies} deps - Dependencies for drawing
+ * @returns {void}
+ */
 const handlePointerMove = (event, deps) => {
   if (!mainCanvas) return;
   const point = getCanvasCoordinates(event);
@@ -224,6 +325,11 @@ const handlePointerMove = (event, deps) => {
   drawPath(tempCtx, currentPath.slice(-2), activeStroke);
 };
 
+/**
+ * Finalize current stroke and send to server
+ * @param {CanvasDependencies} deps - Dependencies for drawing
+ * @returns {void}
+ */
 const finalizeStroke = (deps) => {
   if (!pointerDown || !currentPath.length || !activeStroke) return;
   pointerDown = false;
@@ -241,6 +347,10 @@ const finalizeStroke = (deps) => {
   activeStroke = null;
 };
 
+/**
+ * Handle clear operation from server
+ * @returns {void}
+ */
 const handleClearOperation = () => {
   clearAllCanvases();
   clearCheckpoints();
@@ -248,6 +358,14 @@ const handleClearOperation = () => {
   lastRenderedPointer = -1;
 };
 
+/**
+ * Handle committed operation from server
+ * @param {Object} operation - Operation to commit
+ * @param {string} operation.type - Operation type ('draw' | 'clear')
+ * @param {number} [operation.sequenceNumber] - Sequence number in history
+ * @param {Object} [operation.data] - Operation data
+ * @returns {void}
+ */
 const handleOperationCommitted = (operation) => {
   if (!operation) return;
   if (operation.type === 'clear') {
@@ -275,6 +393,10 @@ const handleOperationCommitted = (operation) => {
   rebuildCanvasFromHistory();
 };
 
+/**
+ * Rebuild canvas from operation history
+ * @returns {void}
+ */
 const rebuildCanvasFromHistory = () => {
   const pointer = getState().pointer;
   clearAllCanvases();
@@ -302,6 +424,11 @@ const rebuildCanvasFromHistory = () => {
   lastRenderedPointer = pointer;
 };
 
+/**
+ * Ensure cursor element exists for user
+ * @param {User} user - User object
+ * @returns {HTMLElement} Cursor element
+ */
 const ensureCursorElement = (user) => {
   if (cursorElements.has(user.id)) {
     return cursorElements.get(user.id);
@@ -317,6 +444,11 @@ const ensureCursorElement = (user) => {
   return { wrapper, label };
 };
 
+/**
+ * Remove cursor element for user
+ * @param {string} userId - User ID
+ * @returns {void}
+ */
 const removeCursorElement = (userId) => {
   const entry = cursorElements.get(userId);
   if (entry) {
@@ -325,6 +457,10 @@ const removeCursorElement = (userId) => {
   }
 };
 
+/**
+ * Render all remote user cursors
+ * @returns {void}
+ */
 const renderRemoteCursors = () => {
   if (!mainCanvas || !cursorsLayer) return;
   const { users } = getState();
@@ -358,6 +494,14 @@ const renderRemoteCursors = () => {
   });
 };
 
+/**
+ * Draw a stroke segment on remote canvas
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Point} startPoint - Starting point
+ * @param {Point[]} points - Additional points
+ * @param {StrokeMeta} stroke - Stroke metadata
+ * @returns {void}
+ */
 const drawStrokeSegment = (ctx, startPoint, points, stroke) => {
   if (!points?.length || !ctx) return;
   ctx.save();
@@ -373,6 +517,13 @@ const drawStrokeSegment = (ctx, startPoint, points, stroke) => {
   ctx.restore();
 };
 
+/**
+ * Draw individual points as circles
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Point[]} points - Points to draw
+ * @param {StrokeMeta} stroke - Stroke metadata
+ * @returns {void}
+ */
 const drawStrokePoints = (ctx, points, stroke) => {
   if (!points?.length) return;
   ctx.save();
@@ -387,6 +538,10 @@ const drawStrokePoints = (ctx, points, stroke) => {
   ctx.restore();
 };
 
+/**
+ * Redraw entire remote layer from cached strokes
+ * @returns {void}
+ */
 const redrawRemoteLayer = () => {
   remoteCtx.save();
   remoteCtx.setTransform(1, 0, 0, 1, 0, 0);
@@ -405,6 +560,14 @@ const redrawRemoteLayer = () => {
   });
 };
 
+/**
+ * Handle remote user starting a stroke
+ * @param {Object} payload - Draw start payload
+ * @param {string} payload.userId - User ID
+ * @param {StrokeMeta} payload.stroke - Stroke metadata
+ * @param {Point} payload.point - Starting point
+ * @returns {void}
+ */
 const handleRemoteDrawStart = ({ userId, stroke, point }) => {
   if (!userId || !stroke?.clientOperationId || !point) return;
   const key = remoteStrokeKey(userId, stroke.clientOperationId);
@@ -415,6 +578,14 @@ const handleRemoteDrawStart = ({ userId, stroke, point }) => {
   drawStrokePoints(remoteCtx, [point], stroke);
 };
 
+/**
+ * Handle remote user adding points to stroke
+ * @param {Object} payload - Draw move payload
+ * @param {string} payload.userId - User ID
+ * @param {StrokeMeta} payload.stroke - Stroke metadata
+ * @param {Point[]} payload.points - New points
+ * @returns {void}
+ */
 const handleRemoteDrawMove = ({ userId, stroke, points }) => {
   if (!userId || !stroke?.clientOperationId || !points?.length) return;
   const key = remoteStrokeKey(userId, stroke.clientOperationId);
@@ -425,6 +596,13 @@ const handleRemoteDrawMove = ({ userId, stroke, points }) => {
   entry.points.push(...points);
 };
 
+/**
+ * Handle remote user finishing a stroke
+ * @param {Object} payload - Draw end payload
+ * @param {string} payload.userId - User ID
+ * @param {StrokeMeta} payload.stroke - Stroke metadata
+ * @returns {void}
+ */
 const handleRemoteDrawEnd = ({ userId, stroke }) => {
   if (!userId || !stroke?.clientOperationId) return;
   const key = remoteStrokeKey(userId, stroke.clientOperationId);
@@ -433,6 +611,11 @@ const handleRemoteDrawEnd = ({ userId, stroke }) => {
   redrawRemoteLayer();
 };
 
+/**
+ * Initialize canvas with event listeners
+ * @param {CanvasDependencies} deps - Dependencies for canvas
+ * @returns {void}
+ */
 export const initCanvas = (deps) => {
   getCanvasElements();
   resizeCanvases();
