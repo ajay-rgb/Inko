@@ -14,7 +14,17 @@ const PORT = process.env.PORT || 3000;
 
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../client')));
+
+// Serve static files with proper MIME types
+app.use(express.static(path.join(__dirname, '../client'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    } else if (filePath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    }
+  }
+}));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', users: room.users.size, uptime: process.uptime() });
