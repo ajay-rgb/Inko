@@ -3,6 +3,7 @@ import {
   getCurrentColor,
   getCurrentTool,
   getCurrentWidth,
+  getLocalUser,
   getState,
   onState,
   setColor,
@@ -25,6 +26,7 @@ const queryElements = () => {
   elements.statusDot = document.getElementById('statusDot');
   elements.statusText = document.getElementById('statusText');
   elements.colorPalette = document.getElementById('colorPalette');
+  elements.userName = document.getElementById('userName');
 };
 
 const setActiveTool = (tool) => {
@@ -49,15 +51,17 @@ const setActiveColor = (color) => {
 
 const renderUsers = () => {
   const state = getState();
+  const localUser = getLocalUser();
   const users = Array.from(state.users.values());
   elements.userCount.textContent = users.length;
   elements.usersList.innerHTML = '';
   users.forEach((user) => {
     const div = document.createElement('div');
     div.className = 'user-item';
+    const displayName = user.id === localUser?.id ? 'you' : (user.name || user.id);
     div.innerHTML = `
       <span class="user-color" style="background-color: ${user.color}"></span>
-      <span class="user-name">${user.name || user.id}</span>
+      <span class="user-name">${displayName}</span>
     `;
     elements.usersList.appendChild(div);
   });
@@ -75,7 +79,7 @@ const createColorButtons = () => {
   });
 };
 
-const bindEvents = ({ onUndo, onRedo, onClear }) => {
+const bindEvents = ({ onUndo, onRedo, onClear, onNameChange }) => {
   elements.brushTool.addEventListener('click', () => setTool(TOOLS.BRUSH));
   elements.eraserTool.addEventListener('click', () => setTool(TOOLS.ERASER));
   elements.strokeWidth.addEventListener('input', (event) => {
@@ -89,6 +93,13 @@ const bindEvents = ({ onUndo, onRedo, onClear }) => {
   elements.clearBtn.addEventListener('click', () => {
     if (window.confirm('Clear canvas for everyone?')) {
       onClear();
+    }
+  });
+
+  elements.userName.addEventListener('input', (event) => {
+    const name = event.target.value.trim();
+    if (name && onNameChange) {
+      onNameChange(name);
     }
   });
 
@@ -140,6 +151,11 @@ export const initUI = (handlers) => {
     elements.strokeValue.textContent = `${width}px`;
   });
   onState('usersUpdated', renderUsers);
+  onState('localUser', (user) => {
+    if (user && user.name) {
+      elements.userName.value = user.name;
+    }
+  });
 
   renderUsers();
 

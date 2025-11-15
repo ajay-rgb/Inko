@@ -25,6 +25,12 @@ const wss = new WebSocketServer({ server });
 
 const room = new Room();
 const colorPool = [...COLOR_POOL];
+let userCounter = 0;
+
+const generateUniqueName = () => {
+  userCounter += 1;
+  return `User ${userCounter}`;
+};
 
 const broadcast = (message, { exclude } = {}) => {
   const payload = typeof message === 'string' ? message : JSON.stringify(message);
@@ -203,6 +209,22 @@ const handleCursorMove = (ws, user, message) => {
   }, { exclude: ws });
 };
 
+const handleNameChange = (ws, user, message) => {
+  const name = message.data?.name;
+  if (!name || typeof name !== 'string' || name.length > 20) {
+    sendError(ws, 'Invalid name');
+    return;
+  }
+  user.name = name.trim();
+  broadcast({
+    type: MESSAGE_TYPES.NAME_CHANGE,
+    data: {
+      userId: user.id,
+      name: user.name,
+    },
+  }, { exclude: ws });
+};
+
 const handleUndoRedo = (ws, message) => {
   const pointer = message.type === MESSAGE_TYPES.UNDO ? room.undo() : room.redo();
   const payload = { type: message.type, data: { pointer } };
@@ -214,7 +236,7 @@ wss.on('connection', (ws) => {
   const user = {
     id: generateId(),
     color: assignColor(),
-    name: `User ${room.users.size + 1}`,
+    name: generateUniqueName(),
     connectedAt: now(),
   };
   const activeStrokes = new Map();
@@ -242,6 +264,9 @@ wss.on('connection', (ws) => {
           break;
         case MESSAGE_TYPES.CURSOR_MOVE:
           handleCursorMove(ws, user, message);
+          break;
+        case MESSAGE_TYPES.NAME_CHANGE:
+          handleNameChange(ws, user, message);
           break;
         case MESSAGE_TYPES.UNDO:
         case MESSAGE_TYPES.REDO:

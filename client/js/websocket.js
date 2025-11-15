@@ -107,6 +107,11 @@ const handleMessage = (event) => {
           }
         }
         break;
+      case MESSAGE_TYPES.NAME_CHANGE:
+        if (data.data?.userId && data.data?.name !== undefined) {
+          upsertUser({ id: data.data.userId, name: data.data.name });
+        }
+        break;
       case MESSAGE_TYPES.CURSOR_MOVE:
         if (data.data?.userId && data.data.cursor) {
           setCursorForUser(data.data.userId, data.data.cursor);
@@ -142,6 +147,7 @@ const sendDrawEnd = (payload) => send({ type: MESSAGE_TYPES.DRAW_END, data: payl
 const sendClear = () => send({ type: MESSAGE_TYPES.CLEAR });
 const sendUndo = () => send({ type: MESSAGE_TYPES.UNDO });
 const sendRedo = () => send({ type: MESSAGE_TYPES.REDO });
+const sendNameChange = (name) => send({ type: MESSAGE_TYPES.NAME_CHANGE, data: { name } });
 const requestStateSync = () => send({ type: MESSAGE_TYPES.STATE_SYNC });
 
 const connect = () => {
@@ -194,6 +200,7 @@ export const initWebSocket = ({
     sendCursorMove,
     sendUndo,
     sendRedo,
+    sendNameChange,
     requestStateSync,
   };
 };

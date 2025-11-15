@@ -9,6 +9,7 @@ export const MESSAGE_TYPES = Object.freeze({
   STATE_SYNC: 'STATE_SYNC',
   USER_JOINED: 'USER_JOINED',
   USER_LEFT: 'USER_LEFT',
+  NAME_CHANGE: 'NAME_CHANGE',
   ERROR: 'ERROR',
 });
 

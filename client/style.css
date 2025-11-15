@@ -258,6 +258,31 @@ body {
     color: #2c3e50;
 }
 
+.user-name-section {
+    margin-bottom: 20px;
+}
+
+.user-name-section label {
+    display: block;
+    font-size: 13px;
+    color: #7f8c8d;
+    margin-bottom: 6px;
+}
+
+#userName {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+#userName:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
 #usersList {
     display: flex;
     flex-direction: column;

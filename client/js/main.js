@@ -20,6 +20,7 @@ const init = () => {
     onUndo: () => transport?.sendUndo?.(),
     onRedo: () => transport?.sendRedo?.(),
     onClear: () => transport?.sendClear?.(),
+    onNameChange: (name) => transport?.sendNameChange?.(name),
   });
 
   transport = initWebSocket({
