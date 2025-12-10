@@ -1,6 +1,6 @@
 # Inko – Real-Time Collaborative Drawing
 ![clideo_editor_a0988837e9154fafa745f89da9a237ef](https://github.com/user-attachments/assets/c20506ee-5fdd-487a-a9d3-e46275303b74)
-<img width="1920" height="937" alt="image" src="https://github.com/user-attachments/assets/27592805-0f62-489e-ba7c-9c764f883cf0" />
+
 A lightweight vanilla-JS canvas client and Node.js WebSocket server for multi-user sketching with live cursor sharing, undo/redo, and remote stroke previews.
 
 ## Prerequisites
