@@ -1,6 +1,7 @@
 import { initCanvas } from './canvas.js';
 import { initUI } from './ui.js';
 import { initWebSocket } from './websocket.js';
+
 import { getCurrentColor, getCurrentTool, getCurrentWidth } from './state.js';
 
 const init = () => {

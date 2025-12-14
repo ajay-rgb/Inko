@@ -13,9 +13,24 @@ import {
 
 const elements = {};
 
+// Theme handling
+const THEME_KEY = 'inko_theme';
+const applyTheme = (theme) => {
+  document.body.classList.toggle('dark', theme === 'dark');
+  const btn = elements.themeToggle;
+  if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+};
+const toggleTheme = () => {
+  const isDark = document.body.classList.contains('dark');
+  const theme = isDark ? 'light' : 'dark';
+  applyTheme(theme);
+  try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* ignore */ }
+};
+
 const queryElements = () => {
   elements.brushTool = document.getElementById('brushTool');
   elements.eraserTool = document.getElementById('eraserTool');
+  elements.themeToggle = document.getElementById('themeToggle');
   elements.strokeWidth = document.getElementById('strokeWidth');
   elements.strokeValue = document.getElementById('strokeValue');
   elements.undoBtn = document.getElementById('undoBtn');
@@ -113,6 +128,8 @@ const bindEvents = ({ onUndo, onRedo, onClear, onNameChange }) => {
     }
   });
 
+  elements.themeToggle?.addEventListener('click', () => toggleTheme());
+
   elements.userName.addEventListener('input', (event) => {
     const name = event.target.value.trim();
     if (name && onNameChange) {
@@ -175,6 +192,14 @@ export const initUI = (handlers) => {
   });
 
   renderUsers();
+
+  // Restore theme preference (or system preference)
+  try {
+    const saved = localStorage.getItem(THEME_KEY) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(saved);
+  } catch (e) {
+    // ignore
+  }
 
   return {
     setStatus: updateStatus,

@@ -87,8 +87,10 @@ const getCanvasElements = () => {
   mainCanvas = document.getElementById('mainCanvas');
   tempCanvas = document.getElementById('tempCanvas');
   remoteCanvas = document.getElementById('remoteCanvas');
+
   container = document.querySelector('.canvas-container');
   cursorsLayer = document.getElementById('cursors');
+
   if (!mainCanvas || !tempCanvas || !remoteCanvas || !container || !cursorsLayer) {
     throw new Error('Canvas or overlay elements missing in DOM');
   }
@@ -138,6 +140,7 @@ const resizeCanvases = () => {
   mainCtx.scale(devicePixelRatio, devicePixelRatio);
   tempCtx.scale(devicePixelRatio, devicePixelRatio);
   remoteCtx.scale(devicePixelRatio, devicePixelRatio);
+
   clearAllCanvases();
   clearCheckpoints();
   lastRenderedPointer = -1;
@@ -206,11 +209,14 @@ const shouldAddPoint = (point) => {
 const drawPath = (ctx, path, { color, width, tool }) => {
   if (!path?.length) return;
   ctx.save();
+
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.lineWidth = width;
   ctx.strokeStyle = color;
+
   ctx.globalCompositeOperation = tool === TOOLS.ERASER ? 'destination-out' : 'source-over';
+
   ctx.beginPath();
   ctx.moveTo(path[0].x, path[0].y);
   for (let i = 1; i < path.length; i += 1) {
@@ -311,9 +317,12 @@ const handlePointerDown = (event, deps) => {
  */
 const handlePointerMove = (event, deps) => {
   if (!mainCanvas) return;
+
   const point = getCanvasCoordinates(event);
+
   if (!point) return; // Ignore invalid coordinates
   const now = performance.now();
+  
   if (now - lastCursorSentAt >= CURSOR_THROTTLE_INTERVAL) {
     deps.sendCursorMove(point);
     lastCursorSentAt = now;
@@ -527,14 +536,18 @@ const drawStrokeSegment = (ctx, startPoint, points, stroke) => {
 const drawStrokePoints = (ctx, points, stroke) => {
   if (!points?.length) return;
   ctx.save();
+
   ctx.fillStyle = stroke.color;
+
   ctx.globalCompositeOperation = stroke.tool === TOOLS.ERASER ? 'destination-out' : 'source-over';
+
   points.forEach((point) => {
     ctx.beginPath();
     ctx.arc(point.x, point.y, Math.max(stroke.width / 2, 1), 0, Math.PI * 2);
     ctx.closePath();
     ctx.fill();
   });
+
   ctx.restore();
 };
 
@@ -632,6 +645,7 @@ export const initCanvas = (deps) => {
 
   mainCanvas.addEventListener('mousedown', (event) => handlePointerDown(event, pointerDeps));
   window.addEventListener('mousemove', (event) => handlePointerMove(event, pointerDeps));
+
   window.addEventListener('mouseup', () => finalizeStroke(pointerDeps));
   mainCanvas.addEventListener('mouseleave', () => finalizeStroke(pointerDeps));
 
