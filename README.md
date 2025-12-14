@@ -1,4 +1,5 @@
 # Inko – Real-Time Collaborative Drawing
+![clideo_editor_a0988837e9154fafa745f89da9a237ef](https://github.com/user-attachments/assets/c20506ee-5fdd-487a-a9d3-e46275303b74)
 
 A lightweight vanilla-JS canvas client and Node.js WebSocket server for multi-user sketching with live cursor sharing, undo/redo, and remote stroke previews.
 
@@ -66,6 +67,3 @@ tests/harness.js    # Automated WebSocket integration harness
 - The canvas isn’t touch-optimized yet, so mobile drawing is limited.
 - Performance has been validated for a handful of users; large crowds would need load testing and persistence.
 
-## Time spent
-
-Roughly **22 hours** across design, implementation, manual testing, and documentation.
