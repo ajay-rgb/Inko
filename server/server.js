@@ -176,6 +176,7 @@ const handleDrawEnd = (ws, user, message, strokes) => {
       color: stroke.color,
       width: stroke.width,
       tool: stroke.tool,
+      shapeType: message.data.shapeType, // Preserve shape type for shapes
     },
     clientOperationId: stroke.clientOperationId,
   });

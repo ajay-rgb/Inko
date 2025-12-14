@@ -59,6 +59,9 @@ let lastCursorSentAt = 0;
 let pointerDown = false;
 let lastRenderedPointer = -1;
 let activeStroke = null;
+let shapeStart = null; // For shape tools
+let shapeEnd = null; // For shape tools - end point
+let isShiftHeld = false;
 
 const cursorElements = new Map();
 const remoteStrokes = new Map();
@@ -227,6 +230,91 @@ const drawPath = (ctx, path, { color, width, tool }) => {
 };
 
 /**
+ * Draw a line shape
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Point} start - Start point
+ * @param {Point} end - End point
+ * @param {Object} options - Drawing options
+ * @returns {void}
+ */
+const drawLine = (ctx, start, end, { color, width, tool }) => {
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = width;
+  ctx.strokeStyle = color;
+  ctx.globalCompositeOperation = tool === TOOLS.ERASER ? 'destination-out' : 'source-over';
+  ctx.beginPath();
+  ctx.moveTo(start.x, start.y);
+  ctx.lineTo(end.x, end.y);
+  ctx.stroke();
+  ctx.restore();
+};
+
+/**
+ * Draw a rectangle shape
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Point} start - Start point
+ * @param {Point} end - End point
+ * @param {Object} options - Drawing options
+ * @returns {void}
+ */
+const drawRect = (ctx, start, end, { color, width, tool }) => {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.globalCompositeOperation = tool === TOOLS.ERASER ? 'destination-out' : 'source-over';
+  const x = Math.min(start.x, end.x);
+  const y = Math.min(start.y, end.y);
+  const w = Math.abs(end.x - start.x);
+  const h = Math.abs(end.y - start.y);
+  ctx.strokeRect(x, y, w, h);
+  ctx.restore();
+};
+
+/**
+ * Draw an ellipse shape
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Point} start - Start point
+ * @param {Point} end - End point
+ * @param {Object} options - Drawing options
+ * @returns {void}
+ */
+const drawEllipse = (ctx, start, end, { color, width, tool }) => {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.globalCompositeOperation = tool === TOOLS.ERASER ? 'destination-out' : 'source-over';
+  const cx = (start.x + end.x) / 2;
+  const cy = (start.y + end.y) / 2;
+  const rx = Math.abs(end.x - start.x) / 2;
+  const ry = Math.abs(end.y - start.y) / 2;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+};
+
+/**
+ * Apply shift constraint to line (45° angles)
+ * @param {Point} start - Start point
+ * @param {Point} end - End point
+ * @returns {Point} Constrained end point
+ */
+const constrainLine = (start, end) => {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const angle = Math.atan2(dy, dx);
+  const distance = Math.hypot(dx, dy);
+  const steps = 8; // 8 directions: 0°, 45°, 90°, etc.
+  const snappedAngle = Math.round(angle / (Math.PI / steps)) * (Math.PI / steps);
+  return {
+    x: start.x + distance * Math.cos(snappedAngle),
+    y: start.y + distance * Math.sin(snappedAngle),
+  };
+};
+
+/**
  * Simplify path using distance-based tolerance
  * @param {Point[]} path - Path to simplify
  * @param {number} [tolerance=1.8] - Minimum distance between points
@@ -295,18 +383,27 @@ const handlePointerDown = (event, deps) => {
   pointerDown = true;
   const point = getCanvasCoordinates(event);
   if (!point) return; // Ignore invalid coordinates
-  currentPath = [point];
-  batchedPoints = [point];
+  
   const color = deps.getCurrentColor();
   const tool = deps.getCurrentTool();
   const width = deps.getCurrentWidth();
   const clientOperationId = crypto.randomUUID();
-  activeStroke = { clientOperationId, color, width, tool };
-
-  setIsDrawing(true);
-  deps.sendDrawStart({ point, color, width, tool, clientOperationId });
-  drawPath(tempCtx, currentPath, activeStroke);
-  startBatching(deps.sendDrawMove);
+  
+  // For brush and eraser, use old path-based system
+  if (tool === TOOLS.BRUSH || tool === TOOLS.ERASER) {
+    currentPath = [point];
+    batchedPoints = [point];
+    activeStroke = { clientOperationId, color, width, tool };
+    setIsDrawing(true);
+    deps.sendDrawStart({ point, color, width, tool, clientOperationId });
+    drawPath(tempCtx, currentPath, activeStroke);
+    startBatching(deps.sendDrawMove);
+  } else {
+    // For shapes, store start point
+    shapeStart = point;
+    activeStroke = { clientOperationId, color, width, tool };
+    setIsDrawing(true);
+  }
 };
 
 /**
@@ -328,10 +425,35 @@ const handlePointerMove = (event, deps) => {
     lastCursorSentAt = now;
   }
   if (!pointerDown) return;
-  if (!shouldAddPoint(point)) return;
-  currentPath.push(point);
-  batchedPoints.push(point);
-  drawPath(tempCtx, currentPath.slice(-2), activeStroke);
+  
+  const tool = deps.getCurrentTool();
+  
+  // For brush/eraser, draw freehand
+  if (tool === TOOLS.BRUSH || tool === TOOLS.ERASER) {
+    if (!shouldAddPoint(point)) return;
+    currentPath.push(point);
+    batchedPoints.push(point);
+    drawPath(tempCtx, currentPath.slice(-2), activeStroke);
+  } else if (shapeStart && activeStroke) {
+    // For shapes, draw preview on temp canvas
+    tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+    let endPoint = point;
+    shapeEnd = { ...point }; // Store end point for finalize
+    
+    // Apply shift constraint for line
+    if (tool === TOOLS.LINE && isShiftHeld) {
+      endPoint = constrainLine(shapeStart, point);
+      shapeEnd = { ...endPoint };
+    }
+    
+    if (tool === TOOLS.LINE) {
+      drawLine(tempCtx, shapeStart, endPoint, activeStroke);
+    } else if (tool === TOOLS.RECT) {
+      drawRect(tempCtx, shapeStart, endPoint, activeStroke);
+    } else if (tool === TOOLS.ELLIPSE) {
+      drawEllipse(tempCtx, shapeStart, endPoint, activeStroke);
+    }
+  }
 };
 
 /**
@@ -340,20 +462,77 @@ const handlePointerMove = (event, deps) => {
  * @returns {void}
  */
 const finalizeStroke = (deps) => {
-  if (!pointerDown || !currentPath.length || !activeStroke) return;
+  if (!pointerDown || !activeStroke) return;
   pointerDown = false;
-  const simplifiedPath = simplifyPath(currentPath);
-  drawPath(mainCtx, simplifiedPath, activeStroke);
-  tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-  deps.sendDrawEnd({
-    path: simplifiedPath,
-    ...activeStroke,
-  });
-  stopBatching(deps.sendDrawMove);
+  
+  const tool = deps.getCurrentTool();
+  
+  if (tool === TOOLS.BRUSH || tool === TOOLS.ERASER) {
+    // Finalize path-based drawing
+    if (!currentPath.length) {
+      setIsDrawing(false);
+      activeStroke = null;
+      tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+      return;
+    }
+    const simplifiedPath = simplifyPath(currentPath);
+    drawPath(mainCtx, simplifiedPath, activeStroke);
+    deps.sendDrawEnd({
+      path: simplifiedPath,
+      ...activeStroke,
+    });
+    stopBatching(deps.sendDrawMove);
+    currentPath = [];
+    batchedPoints = [];
+  } else if (shapeStart && shapeEnd) {
+    // Draw shape to main canvas
+    if (tool === TOOLS.LINE) {
+      drawLine(mainCtx, shapeStart, shapeEnd, activeStroke);
+    } else if (tool === TOOLS.RECT) {
+      drawRect(mainCtx, shapeStart, shapeEnd, activeStroke);
+    } else if (tool === TOOLS.ELLIPSE) {
+      drawEllipse(mainCtx, shapeStart, shapeEnd, activeStroke);
+    }
+    
+    // Send shape data to server
+    deps.sendDrawEnd({
+      path: [shapeStart, shapeEnd],
+      shapeType: tool,
+      ...activeStroke,
+    });
+    
+    shapeStart = null;
+    shapeEnd = null;
+  }
+  
   setIsDrawing(false);
-  currentPath = [];
-  batchedPoints = [];
   activeStroke = null;
+  tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+};
+
+/**
+ * Draw an operation based on its type
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Object} data - Operation data
+ * @returns {void}
+ */
+const drawOperation = (ctx, data) => {
+  if (!data?.path?.length) return;
+  
+  // Check if it's a shape operation
+  if (data.shapeType && data.path.length === 2) {
+    const [start, end] = data.path;
+    if (data.shapeType === TOOLS.LINE) {
+      drawLine(ctx, start, end, data);
+    } else if (data.shapeType === TOOLS.RECT) {
+      drawRect(ctx, start, end, data);
+    } else if (data.shapeType === TOOLS.ELLIPSE) {
+      drawEllipse(ctx, start, end, data);
+    }
+  } else {
+    // Regular brush/eraser stroke
+    drawPath(ctx, data.path, data);
+  }
 };
 
 /**
@@ -383,11 +562,11 @@ const handleOperationCommitted = (operation) => {
   }
   if (!operation?.data?.path?.length) return;
   if (operation.sequenceNumber == null) {
-    drawPath(mainCtx, operation.data.path, operation.data);
+    drawOperation(mainCtx, operation.data);
     return;
   }
   if (operation.sequenceNumber === lastRenderedPointer + 1) {
-    drawPath(mainCtx, operation.data.path, operation.data);
+    drawOperation(mainCtx, operation.data);
     lastRenderedPointer = operation.sequenceNumber;
     if ((operation.sequenceNumber + 1) % CHECKPOINT_INTERVAL === 0) {
       try {
@@ -428,7 +607,7 @@ const rebuildCanvasFromHistory = () => {
       handleClearOperation();
       continue;
     }
-    drawPath(mainCtx, operation.data.path, operation.data);
+    drawOperation(mainCtx, operation.data);
   }
   lastRenderedPointer = pointer;
 };
@@ -648,6 +827,18 @@ export const initCanvas = (deps) => {
 
   window.addEventListener('mouseup', () => finalizeStroke(pointerDeps));
   mainCanvas.addEventListener('mouseleave', () => finalizeStroke(pointerDeps));
+
+  // Track shift key for line constraining
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Shift') {
+      isShiftHeld = true;
+    }
+  });
+  window.addEventListener('keyup', (event) => {
+    if (event.key === 'Shift') {
+      isShiftHeld = false;
+    }
+  });
 
   window.addEventListener('resize', resizeCanvases);
   resizeObserver = new ResizeObserver(() => resizeCanvases());

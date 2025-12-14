@@ -157,56 +157,27 @@ body {
     75% { transform: scale(1.1) rotate(5deg); }
 }
 
-/* Color Palette */
-.color-palette {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
+/* Color Control */
+.color-control {
+    display: flex;
     gap: 10px;
+    align-items: center;
 }
 
-.color-btn {
+.color-btn.single {
     width: 100%;
-    aspect-ratio: 1;
-    border: 2px solid #e1e8ed;
-    border-radius: 50%;
+    padding: 12px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: #000000;
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    position: relative;
 }
 
-.color-btn::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    color: white;
-    font-weight: bold;
-    font-size: 16px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    transition: transform 0.3s ease;
-}
-
-.color-btn:hover {
-    transform: scale(1.15);
-    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-}
-
-.tool-btn.active {
-    background: var(--accent);
-    border-color: color-mix(in srgb, var(--accent) 80%, black 20%);
+.color-btn.single:hover {
     transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-}
-.tool-btn.active svg {
-    fill: white;
-}
-}
-
-@keyframes colorPulse {
-    0%, 100% { transform: scale(1.25); }
-    50% { transform: scale(1.3); }
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
 }
 
 /* Stroke Width */

@@ -30,6 +30,9 @@ const toggleTheme = () => {
 const queryElements = () => {
   elements.brushTool = document.getElementById('brushTool');
   elements.eraserTool = document.getElementById('eraserTool');
+  elements.lineTool = document.getElementById('lineTool');
+  elements.rectTool = document.getElementById('rectTool');
+  elements.ellipseTool = document.getElementById('ellipseTool');
   elements.themeToggle = document.getElementById('themeToggle');
   elements.strokeWidth = document.getElementById('strokeWidth');
   elements.strokeValue = document.getElementById('strokeValue');
@@ -40,28 +43,31 @@ const queryElements = () => {
   elements.usersList = document.getElementById('usersList');
   elements.statusDot = document.getElementById('statusDot');
   elements.statusText = document.getElementById('statusText');
-  elements.colorPalette = document.getElementById('colorPalette');
+  elements.colorBtn = document.getElementById('colorBtn');
+  elements.colorPicker = document.getElementById('colorPicker');
   elements.userName = document.getElementById('userName');
 };
 
 const setActiveTool = (tool) => {
-  [elements.brushTool, elements.eraserTool].forEach((btn) => btn?.classList.remove('active'));
+  [elements.brushTool, elements.eraserTool, elements.lineTool, elements.rectTool, elements.ellipseTool].forEach((btn) => btn?.classList.remove('active'));
   if (tool === TOOLS.BRUSH) {
     elements.brushTool?.classList.add('active');
-  } else {
+  } else if (tool === TOOLS.ERASER) {
     elements.eraserTool?.classList.add('active');
+  } else if (tool === TOOLS.LINE) {
+    elements.lineTool?.classList.add('active');
+  } else if (tool === TOOLS.RECT) {
+    elements.rectTool?.classList.add('active');
+  } else if (tool === TOOLS.ELLIPSE) {
+    elements.ellipseTool?.classList.add('active');
   }
 };
 
 const setActiveColor = (color) => {
-  const buttons = elements.colorPalette?.querySelectorAll('.color-btn');
-  buttons?.forEach((btn) => {
-    if (btn.dataset.color === color) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
+  if (elements.colorBtn) {
+    elements.colorBtn.style.backgroundColor = color;
+    if (elements.colorPicker) elements.colorPicker.value = color;
+  }
 };
 
 const renderUsers = () => {
@@ -83,15 +89,7 @@ const renderUsers = () => {
 };
 
 const createColorButtons = () => {
-  elements.colorPalette.innerHTML = '';
-  COLOR_PALETTE.forEach((color) => {
-    const button = document.createElement('button');
-    button.className = 'color-btn';
-    button.dataset.color = color;
-    button.style.backgroundColor = color;
-    button.addEventListener('click', () => setColor(color));
-    elements.colorPalette.appendChild(button);
-  });
+  // No longer needed - using color picker instead
 };
 
 const bindEvents = ({ onUndo, onRedo, onClear, onNameChange }) => {
@@ -114,6 +112,15 @@ const bindEvents = ({ onUndo, onRedo, onClear, onNameChange }) => {
   
   elements.brushTool.addEventListener('click', () => setTool(TOOLS.BRUSH));
   elements.eraserTool.addEventListener('click', () => setTool(TOOLS.ERASER));
+  elements.lineTool?.addEventListener('click', () => setTool(TOOLS.LINE));
+  elements.rectTool?.addEventListener('click', () => setTool(TOOLS.RECT));
+  elements.ellipseTool?.addEventListener('click', () => setTool(TOOLS.ELLIPSE));
+  
+  elements.colorBtn?.addEventListener('click', () => elements.colorPicker?.click());
+  elements.colorPicker?.addEventListener('change', (event) => {
+    setColor(event.target.value);
+  });
+  
   elements.strokeWidth.addEventListener('input', (event) => {
     const value = Number(event.target.value);
     elements.strokeValue.textContent = `${value}px`;

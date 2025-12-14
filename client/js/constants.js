@@ -15,7 +15,10 @@ export const MESSAGE_TYPES = Object.freeze({
 
 export const TOOLS = Object.freeze({
   BRUSH: 'brush',
-  ERASER: 'eraser'
+  ERASER: 'eraser',
+  LINE: 'line',
+  RECT: 'rect',
+  ELLIPSE: 'ellipse',
 });
 
 export const COLOR_PALETTE = [

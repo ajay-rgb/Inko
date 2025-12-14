@@ -1,7 +1,7 @@
 import { MESSAGE_TYPES } from './constants.js';
 import { generateId, validateColor, validateCoordinate } from './utils.js';
 
-const TOOLS = new Set(['brush', 'eraser']);
+const TOOLS = new Set(['brush', 'eraser', 'line', 'rect', 'ellipse']);
 
 /**
  * Validate a single point
