@@ -12,25 +12,6 @@ import {
 } from './state.js';
 import { showToast, dismissAllToasts } from './toast.js';
 
-/**
- * @typedef {Object} WebSocketMessage
- * @property {string} type - Message type from MESSAGE_TYPES
- * @property {Object} data - Message payload
- */
-
-/**
- * @typedef {Object} WebSocketHandlers
- * @property {Function} [onStatusChange] - Connection status callback
- * @property {Function} [onRemoteDrawStart] - Remote draw start handler
- * @property {Function} [onRemoteDrawMove] - Remote draw move handler
- * @property {Function} [onRemoteDrawEnd] - Remote draw end handler
- * @property {Function} [onRemoteClear] - Remote clear handler
- */
-
-/**
- * Resolve WebSocket URL based on environment
- * @returns {string} WebSocket URL
- */
 const resolveWebSocketUrl = () => {
   if (window.WS_URL) return window.WS_URL;
   if (window.location) {
@@ -54,17 +35,11 @@ let remoteHandlers = {};
 let reconnectToastId = null;
 let isFirstConnection = true;
 
-/**
- * Notify status listener of connection state change
- * @param {string} status - Connection status ('connected' | 'connecting' | 'disconnected')
- * @returns {void}
- */
 const notifyStatus = (status) => {
   if (typeof statusListener === 'function') {
     statusListener(status);
   }
   
-  // Show toast notifications for connection state changes
   if (status === 'connected') {
     if (reconnectToastId) {
       dismissAllToasts();
@@ -81,11 +56,6 @@ const notifyStatus = (status) => {
   }
 };
 
-/**
- * Send a message via WebSocket or queue if disconnected
- * @param {WebSocketMessage} message - Message to send
- * @returns {void}
- */
 const send = (message) => {
   if (!message?.type) return;
   const payload = JSON.stringify(message);
@@ -93,18 +63,12 @@ const send = (message) => {
     socket.send(payload);
     return;
   }
-  // Queue message for retry when reconnected
   outboundQueue.push(payload);
   if (outboundQueue.length === 1) {
-    // Only show toast for first queued message
     showToast('Queued for retry when connection restores', 'info', { duration: 2000 });
   }
 };
 
-/**
- * Flush queued messages when connection is restored
- * @returns {void}
- */
 const flushQueue = () => {
   if (!socket || socket.readyState !== WebSocket.OPEN) return;
   const queueLength = outboundQueue.length;
@@ -116,10 +80,6 @@ const flushQueue = () => {
   }
 };
 
-/**
- * Schedule reconnection with exponential backoff
- * @returns {void}
- */
 const scheduleReconnect = () => {
   const wait = BACKOFF_STEPS[Math.min(reconnectAttempt, BACKOFF_STEPS.length - 1)];
   setTimeout(() => connect(), wait);

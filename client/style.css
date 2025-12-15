@@ -12,7 +12,7 @@
     --text: #2c3e50;
     --muted: #5a6c7d;
     --border: #e1e8ed;
-    --accent: #916df4;
+    --accent: #ffffff;
     --danger: #e74c3c;
     --cursor-svg-light: %234a90e2;
     --cursor-svg-dark: %237fb3ff;
@@ -23,10 +23,10 @@
     --bg: #0f1720;
     --panel-bg: #111419;
     --card-bg: #0f161a;
-    --text: #e6eef6;
+    --text: #eaeaea;
     --muted: #9fb7d6;
     --border: rgba(255,255,255,0.06);
-    --accent: #a37fff;
+    --accent: #363636;
 }
 
 body {
@@ -56,7 +56,7 @@ body {
 .toolbar-section {
     margin-bottom: 25px;
     padding-bottom: 20px;
-    border-bottom: 1px solid #e1e8ed;
+    border-bottom: 1px solid var(--border);
     animation: fadeInUp 0.6s ease-out backwards;
 }
 
@@ -169,7 +169,7 @@ body {
     padding: 12px;
     border: 2px solid var(--border);
     border-radius: 8px;
-    background: #000000;
+    background: var(--card-bg);
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -213,7 +213,7 @@ body {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #4a90e2;
+    background: var(--accent);
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     border: none;
@@ -245,7 +245,7 @@ body {
 
 .action-btn {
     padding: 12px;
-    background: var(--accent);
+    background: #4a90e2;
     color: white;
     border: none;
     border-radius: 8px;
@@ -432,12 +432,16 @@ body {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    border: 2px solid white;
+    border: 2px solid #eaeaea;
     pointer-events: none;
     transform: translate(-50%, -50%);
     transition: all 0.05s linear;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     animation: cursorFloat 2s ease-in-out infinite;
+}
+
+.dark .remote-cursor {
+    border-color: #7fb3ff;
 }
 
 @keyframes cursorFloat {
@@ -450,14 +454,15 @@ body {
     top: 25px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(44, 62, 80, 0.9);
-    color: white;
+    background: var(--panel-bg);
+    color: var(--text);
     padding: 4px 10px;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
 }
 
 /* Users Panel */
@@ -485,7 +490,7 @@ body {
 .users-panel h3 {
     font-size: 16px;
     margin-bottom: 15px;
-    color: #2c3e50;
+    color: var(--text);
     font-weight: 700;
     letter-spacing: 0.5px;
     text-transform: uppercase;
@@ -502,7 +507,7 @@ body {
 .user-name-section label {
     display: block;
     font-size: 12px;
-    color: #5a6c7d;
+    color: var(--muted);
     margin-bottom: 8px;
     font-weight: 600;
     text-transform: uppercase;
@@ -512,11 +517,12 @@ body {
 #userName {
     width: 100%;
     padding: 10px 12px;
-    border: 1px solid #e1e8ed;
+    border: 1px solid var(--border);
     border-radius: 6px;
     font-size: 14px;
     transition: all 0.3s;
-    background: #fafbfc;
+    background: var(--card-bg);
+    color: var(--text);
     font-weight: 500;
 }
 
@@ -566,9 +572,13 @@ body {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 2px solid white;
+    border: 2px solid #eaeaea;
     box-shadow: 0 2px 4px rgba(0,0,0,0.15);
     animation: colorBounce 2s ease-in-out infinite;
+}
+
+.dark .user-color {
+    border-color: #7fb3ff;
 }
 
 @keyframes colorBounce {
@@ -669,7 +679,7 @@ body {
 }
 
 .toast-close:hover {
-    color: #2c3e50;
+    color: var(--text);
 }
 
 @keyframes slideIn {

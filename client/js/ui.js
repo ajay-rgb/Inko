@@ -33,6 +33,7 @@ const queryElements = () => {
   elements.lineTool = document.getElementById('lineTool');
   elements.rectTool = document.getElementById('rectTool');
   elements.ellipseTool = document.getElementById('ellipseTool');
+  elements.arrowTool = document.getElementById('arrowTool');
   elements.themeToggle = document.getElementById('themeToggle');
   elements.strokeWidth = document.getElementById('strokeWidth');
   elements.strokeValue = document.getElementById('strokeValue');
@@ -49,7 +50,7 @@ const queryElements = () => {
 };
 
 const setActiveTool = (tool) => {
-  [elements.brushTool, elements.eraserTool, elements.lineTool, elements.rectTool, elements.ellipseTool].forEach((btn) => btn?.classList.remove('active'));
+  [elements.brushTool, elements.eraserTool, elements.lineTool, elements.rectTool, elements.ellipseTool, elements.arrowTool].forEach((btn) => btn?.classList.remove('active'));
   if (tool === TOOLS.BRUSH) {
     elements.brushTool?.classList.add('active');
   } else if (tool === TOOLS.ERASER) {
@@ -60,6 +61,8 @@ const setActiveTool = (tool) => {
     elements.rectTool?.classList.add('active');
   } else if (tool === TOOLS.ELLIPSE) {
     elements.ellipseTool?.classList.add('active');
+  } else if (tool === TOOLS.ARROW) {
+    elements.arrowTool?.classList.add('active');
   }
 };
 
@@ -115,6 +118,7 @@ const bindEvents = ({ onUndo, onRedo, onClear, onNameChange }) => {
   elements.lineTool?.addEventListener('click', () => setTool(TOOLS.LINE));
   elements.rectTool?.addEventListener('click', () => setTool(TOOLS.RECT));
   elements.ellipseTool?.addEventListener('click', () => setTool(TOOLS.ELLIPSE));
+  elements.arrowTool?.addEventListener('click', () => setTool(TOOLS.ARROW));
   
   elements.colorBtn?.addEventListener('click', () => elements.colorPicker?.click());
   elements.colorPicker?.addEventListener('change', (event) => {

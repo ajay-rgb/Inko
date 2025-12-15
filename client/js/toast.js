@@ -1,20 +1,6 @@
-/**
- * @typedef {'success'|'error'|'warning'|'info'} ToastType
- */
-
-/**
- * @typedef {Object} ToastOptions
- * @property {number} [duration=3000] - Auto-dismiss duration in ms (0 = no auto-dismiss)
- * @property {boolean} [closable=true] - Show close button
- */
-
 let toastContainer = null;
 let toastId = 0;
 
-/**
- * Initialize toast container
- * @returns {HTMLElement} Toast container element
- */
 const getToastContainer = () => {
   if (!toastContainer) {
     toastContainer = document.createElement('div');
@@ -24,11 +10,6 @@ const getToastContainer = () => {
   return toastContainer;
 };
 
-/**
- * Get icon for toast type
- * @param {ToastType} type - Toast type
- * @returns {string} Icon character
- */
 const getIcon = (type) => {
   switch (type) {
     case 'success': return '✓';
@@ -39,11 +20,6 @@ const getIcon = (type) => {
   }
 };
 
-/**
- * Remove a toast element
- * @param {HTMLElement} toastElement - Toast element to remove
- * @returns {void}
- */
 const removeToast = (toastElement) => {
   toastElement.classList.add('closing');
   setTimeout(() => {
@@ -55,13 +31,6 @@ const removeToast = (toastElement) => {
   }, 300);
 };
 
-/**
- * Show a toast notification
- * @param {string} message - Toast message
- * @param {ToastType} [type='info'] - Toast type
- * @param {ToastOptions} [options={}] - Toast options
- * @returns {number} Toast ID for manual dismissal
- */
 export const showToast = (message, type = 'info', options = {}) => {
   const { duration = 3000, closable = true } = options;
   const container = getToastContainer();
@@ -103,11 +72,6 @@ export const showToast = (message, type = 'info', options = {}) => {
   return id;
 };
 
-/**
- * Dismiss a specific toast by ID
- * @param {number} id - Toast ID
- * @returns {void}
- */
 export const dismissToast = (id) => {
   if (!toastContainer) return;
   const toast = toastContainer.querySelector(`[data-toast-id="${id}"]`);
@@ -116,10 +80,6 @@ export const dismissToast = (id) => {
   }
 };
 
-/**
- * Dismiss all toasts
- * @returns {void}
- */
 export const dismissAllToasts = () => {
   if (!toastContainer) return;
   Array.from(toastContainer.children).forEach(toast => {

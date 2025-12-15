@@ -19,6 +19,7 @@ export const TOOLS = Object.freeze({
   LINE: 'line',
   RECT: 'rect',
   ELLIPSE: 'ellipse',
+  ARROW: 'arrow',
 });
 
 export const COLOR_PALETTE = [
